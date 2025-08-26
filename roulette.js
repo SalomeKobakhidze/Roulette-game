@@ -1,197 +1,170 @@
-// Get the canvas and its context
+// Get all necessary DOM elements
 const canvas = document.getElementById('rouletteCanvas');
 const ctx = canvas.getContext('2d');
 const spinButton = document.getElementById('spinButton');
 const betInput = document.getElementById('betInput');
 const betNumberInput = document.getElementById('betNumberInput');
-const betTypeRadios = document.querySelectorAll('input[name="betType"]');
 const balanceDisplay = document.getElementById('balance');
 const resultDisplay = document.getElementById('result');
 const resetButton = document.getElementById('resetButton');
 
-// Constants for the game
+// Roulette wheel data
 const numbers = [0, 32, 15, 19, 4, 21, 2, 25, 17, 34, 6, 27, 13, 36, 11, 30, 8, 23, 10, 5, 24, 16, 33, 1, 20, 14, 31, 9, 22, 18, 29, 7, 28, 12, 35, 3, 26];
-const colors = ['green', 'red', 'black', 'red', 'black', 'red', 'black', 'red', 'black', 'red', 'black', 'red', 'black', 'red', 'black', 'red', 'black', 'red', 'black', 'red', 'black', 'red', 'black', 'red', 'black', 'red', 'black', 'red', 'black', 'red', 'black', 'red', 'black', 'red', 'black', 'red', 'black'];
-const arc = Math.PI * 2 / numbers.length;
+const colors = {
+    red: [32, 19, 21, 25, 34, 27, 36, 30, 23, 5, 16, 1, 14, 9, 18, 7, 28, 12],
+    black: [15, 4, 2, 17, 6, 13, 11, 8, 10, 24, 33, 20, 31, 22, 29, 28, 26, 35, 3],
+    green: [0]
+};
 
-// Game state variables
-let balance = 1000;
+// Game state
 let isSpinning = false;
-let currentRotation = 0;
-let spinVelocity = 0;
+let rotation = 0;
+let targetRotation = 0;
+let spinSpeed = 0;
+let balance = localStorage.getItem('rouletteBalance') ? parseInt(localStorage.getItem('rouletteBalance')) : 1000;
+let betAmount = 0;
+let betType = 'number';
+let betNumber = 0;
+let winningNumber = null;
 
-// Load balance from local storage or set initial balance
-function loadBalance() {
-    const savedBalance = localStorage.getItem('rouletteBalance');
-    if (savedBalance) {
-        balance = parseInt(savedBalance, 10);
-    }
-    balanceDisplay.textContent = balance;
-}
-
-// Save balance to local storage
-function saveBalance() {
-    localStorage.setItem('rouletteBalance', balance);
-    balanceDisplay.textContent = balance;
-}
-
-// Function to reset balance
-function resetBalance() {
-    balance = 1000;
-    saveBalance();
-    resultDisplay.textContent = 'ბალანსი განულებულია.';
-}
-
-// Function to draw the roulette wheel
+// Drawing functions
 function drawWheel() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    const centerX = canvas.width / 2;
-    const centerY = canvas.height / 2;
-    const radius = 180;
+    const size = canvas.width;
+    const center = size / 2;
+    const radius = size / 2;
+    const arc = (2 * Math.PI) / numbers.length;
 
-    for (let i = 0; i < numbers.length; i++) {
-        const angle = currentRotation + i * arc;
-        const color = colors[i];
+    numbers.forEach((number, index) => {
+        const angle = (index * arc) + rotation;
         
         ctx.beginPath();
-        ctx.arc(centerX, centerY, radius, angle, angle + arc);
-        ctx.lineTo(centerX, centerY);
-        ctx.fillStyle = color;
+        ctx.arc(center, center, radius, angle, angle + arc);
+        ctx.lineTo(center, center);
+        ctx.fillStyle = getNumberColor(number);
         ctx.fill();
-        
-        // Draw the numbers
+
+        // Draw number
         ctx.save();
-        ctx.translate(centerX, centerY);
+        ctx.translate(center, center);
         ctx.rotate(angle + arc / 2);
-        
         ctx.fillStyle = 'white';
-        ctx.font = '14px Press Start 2P';
+        ctx.font = '14px Arial';
         ctx.textAlign = 'right';
-        ctx.fillText(numbers[i], radius - 20, 5);
-        
+        ctx.fillText(number, radius - 15, 0);
         ctx.restore();
-    }
-    
-    // Draw the winning indicator (a triangle)
+    });
+
+    // Draw the pin
     ctx.beginPath();
-    ctx.moveTo(centerX, centerY - radius - 20);
-    ctx.lineTo(centerX - 10, centerY - radius);
-    ctx.lineTo(centerX + 10, centerY - radius);
-    ctx.closePath();
-    ctx.fillStyle = 'yellow';
+    ctx.moveTo(center, 10);
+    ctx.lineTo(center - 10, 0);
+    ctx.lineTo(center + 10, 0);
+    ctx.fillStyle = 'white';
     ctx.fill();
 }
 
-// Function to spin the wheel
-function spin() {
+function getNumberColor(number) {
+    if (colors.red.includes(number)) return 'red';
+    if (colors.black.includes(number)) return 'black';
+    return 'green';
+}
+
+function update() {
+    if (isSpinning) {
+        rotation += spinSpeed;
+        spinSpeed *= 0.99; // Damping effect
+        
+        // Stop spinning when close to target
+        if (spinSpeed < 0.005) {
+            isSpinning = false;
+            spinSpeed = 0;
+            checkResult();
+            spinButton.disabled = false;
+        }
+    }
+    drawWheel();
+    requestAnimationFrame(update);
+}
+
+function checkResult() {
+    const totalRotation = rotation % (2 * Math.PI);
+    const normalizedRotation = (2 * Math.PI - totalRotation) % (2 * Math.PI);
+    const arc = (2 * Math.PI) / numbers.length;
+    const winningIndex = Math.floor(normalizedRotation / arc);
+
+    winningNumber = numbers[winningIndex];
+
+    // Check if the winning number matches the bet
+    let isWinner = false;
+    if (betType === 'number' && betNumber === winningNumber) {
+        balance += betAmount * 35; // 35:1 payout
+        isWinner = true;
+    } else if (betType === 'red' && colors.red.includes(winningNumber)) {
+        balance += betAmount * 2; // 2:1 payout
+        isWinner = true;
+    } else if (betType === 'black' && colors.black.includes(winningNumber)) {
+        balance += betAmount * 2;
+        isWinner = true;
+    } else if (betType === 'even' && winningNumber !== 0 && winningNumber % 2 === 0) {
+        balance += betAmount * 2;
+        isWinner = true;
+    } else if (betType === 'odd' && winningNumber !== 0 && winningNumber % 2 !== 0) {
+        balance += betAmount * 2;
+        isWinner = true;
+    } else {
+        balance -= betAmount;
+    }
+
+    // Update the UI
+    balanceDisplay.textContent = balance;
+    if (isWinner) {
+        resultDisplay.textContent = `გილოცავ! გამარჯვებული რიცხვია: ${winningNumber}.`;
+        resultDisplay.style.color = '#48bb78';
+    } else {
+        resultDisplay.textContent = `სამწუხაროდ, წააგეთ. გამარჯვებული რიცხვია: ${winningNumber}.`;
+        resultDisplay.style.color = '#f56565';
+    }
+
+    // Save the balance
+    localStorage.setItem('rouletteBalance', balance);
+}
+
+// Event listeners
+spinButton.addEventListener('click', () => {
     if (isSpinning) return;
 
-    const betAmount = parseInt(betInput.value, 10);
-    const betType = document.querySelector('input[name="betType"]:checked').value;
-    const betNumber = betType === 'number' ? parseInt(betNumberInput.value, 10) : null;
-    
-    // Validate bet amount
-    if (isNaN(betAmount) || betAmount <= 0 || betAmount > balance) {
-        resultDisplay.textContent = 'გთხოვთ, შეიყვანოთ სწორი ფსონი.';
-        return;
-    }
-    
-    // Validate number if bet type is 'number'
-    if (betType === 'number' && (isNaN(betNumber) || betNumber < 0 || betNumber > 36 || !numbers.includes(betNumber))) {
-        resultDisplay.textContent = 'გთხოვთ, შეიყვანოთ სწორი რიცხვი (0-36).';
+    betAmount = parseInt(betInput.value);
+    betType = document.querySelector('input[name="betType"]:checked').value;
+    betNumber = parseInt(betNumberInput.value);
+
+    // Validate bet
+    if (betAmount <= 0 || betAmount > balance) {
+        resultDisplay.textContent = 'არასწორი ფსონი! გთხოვთ, შეცვალოთ.';
+        resultDisplay.style.color = '#ecc94b';
         return;
     }
 
-    balance -= betAmount;
-    saveBalance();
-    
-    isSpinning = true;
+    // Disable the button while spinning
     spinButton.disabled = true;
-    spinVelocity = Math.random() * 0.2 + 0.1; // More energetic spin
-    
-    resultDisplay.textContent = 'ტრიალებს...';
-
-    // Animation loop with smoother deceleration
-    const spinLoop = () => {
-        if (!isSpinning) return;
-        
-        spinVelocity *= 0.985;
-        
-        currentRotation += spinVelocity;
-        
-        if (spinVelocity < 0.001) {
-            isSpinning = false;
-            spinButton.disabled = false;
-            determineWinner(betType, betAmount, betNumber);
-            return;
-        }
-        
-        drawWheel();
-        requestAnimationFrame(spinLoop);
-    };
-    
-    spinLoop();
-}
-
-// Function to determine the winner
-function determineWinner(betType, betAmount, betNumber) {
-    const winningIndex = Math.floor((-currentRotation % (2 * Math.PI)) / arc);
-    const winningNumber = numbers[winningIndex];
-    const winningColor = colors[winningIndex];
-    
-    resultDisplay.textContent = `გამარჯვებული რიცხვია: ${winningNumber}.`;
-    let winnings = 0;
-    
-    switch (betType) {
-        case 'number':
-            if (winningNumber === betNumber) {
-                winnings = betAmount * 35;
-                resultDisplay.textContent = `გილოცავ! თქვენ მოიგეთ ${winnings} ქულა!`;
-            }
-            break;
-        case 'red':
-            if (winningColor === 'red') {
-                winnings = betAmount * 2;
-                resultDisplay.textContent = `გილოცავ! თქვენ მოიგეთ ${winnings} ქულა! (წითელზე)`;
-            }
-            break;
-        case 'black':
-            if (winningColor === 'black') {
-                winnings = betAmount * 2;
-                resultDisplay.textContent = `გილოცავ! თქვენ მოიგეთ ${winnings} ქულა! (შავზე)`;
-            }
-            break;
-        case 'even':
-            if (winningNumber !== 0 && winningNumber % 2 === 0) {
-                winnings = betAmount * 2;
-                resultDisplay.textContent = `გილოცავ! თქვენ მოიგეთ ${winnings} ქულა! (ლუწზე)`;
-            }
-            break;
-        case 'odd':
-            if (winningNumber !== 0 && winningNumber % 2 !== 0) {
-                winnings = betAmount * 2;
-                resultDisplay.textContent = `გილოცავ! თქვენ მოიგეთ ${winnings} ქულა! (კენტზე)`;
-            }
-            break;
-    }
-    
-    balance += winnings;
-    saveBalance();
-}
-
-// Event listeners for the spin button and reset button
-spinButton.addEventListener('click', spin);
-resetButton.addEventListener('click', resetBalance);
-
-// Event listeners for radio buttons to toggle bet number input
-betTypeRadios.forEach(radio => {
-    radio.addEventListener('change', (e) => {
-        betNumberInput.disabled = e.target.value !== 'number';
-    });
+    isSpinning = true;
+    spinSpeed = Math.random() * 0.1 + 0.05; // Random spin speed
+    resultDisplay.textContent = 'ვტრიალებთ...';
+    resultDisplay.style.color = '#a0aec0';
 });
 
-// Initial load of the balance and drawing of the wheel
-window.onload = function() {
-    loadBalance();
-    drawWheel();
-};
+resetButton.addEventListener('click', () => {
+    balance = 1000;
+    balanceDisplay.textContent = balance;
+    localStorage.setItem('rouletteBalance', balance);
+    resultDisplay.textContent = '';
+});
+
+// Update the balance display on load
+document.addEventListener('DOMContentLoaded', () => {
+    balanceDisplay.textContent = balance;
+    // Set initial canvas size
+    canvas.width = 400;
+    canvas.height = 400;
+    update();
+});
+
