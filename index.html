@@ -85,25 +85,6 @@
             background-color: #27795b;
         }
 
-        #game-over-screen, #win-screen {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            z-index: 100;
-            background-color: rgba(0, 0, 0, 0.8);
-            padding: 30px;
-            border-radius: 10px;
-            display: none;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .player-invincible {
-            opacity: 0.5;
-        }
-        
         .radio-label-container {
             display: flex;
             align-items: center;
@@ -120,7 +101,6 @@
         <div id="game-selection" class="container">
             <h1>აირჩიეთ თამაში</h1>
             <a href="?game=roulette" class="game-link">რულეტკა</a>
-            <a href="?game=felix" class="game-link">Felix The Cat</a>
         </div>
         
         <div id="game-container" class="hidden">
@@ -131,27 +111,6 @@
     <script>
         // Define all games and their configurations (JS file and HTML template)
         const games = {
-            'felix': {
-                jsFile: 'felix.js',
-                htmlTemplate: `
-                    <div id="game-container">
-                        <canvas id="gameCanvas"></canvas>
-                        <div id="game-info" class="mt-4 flex justify-between">
-                            <div>ქულა: <span id="score">0</span></div>
-                            <div>სიცოცხლე: <span id="lives">3</span></div>
-                        </div>
-                    </div>
-                    <div id="game-over-screen">
-                        <h1 id="game-over-text">თამაში დასრულდა</h1>
-                        <div class="score-display">საბოლოო ქულა: <span id="final-score">0</span></div>
-                        <button onclick="window.location.href = window.location.pathname">მთავარ გვერდზე დაბრუნება</button>
-                    </div>
-                    <div id="win-screen">
-                        <h1 id="win-text">გილოცავ! დონე დასრულებულია!</h1>
-                        <button onclick="window.game.loadNextLevel()">შემდეგი დონე</button>
-                    </div>
-                `
-            },
             'roulette': {
                 jsFile: 'roulette.js',
                 htmlTemplate: `
