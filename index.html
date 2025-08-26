@@ -74,7 +74,7 @@
             color: #fff;
             border: none;
             padding: 10px 20px;
-            font-family: 'Press+Start+2P', cursive;
+            font-family: 'Press Start 2P', cursive;
             cursor: pointer;
             transition: background-color 0.3s;
             border-radius: 8px;
@@ -145,7 +145,26 @@
             'roulette': {
                 jsFile: 'roulette.js',
                 htmlTemplate: `
-                    <!-- Your Roulette HTML will go here -->
+                    <div id="roulette-game" class="container">
+                        <h1 class="text-4xl font-bold mb-4">რულეტკა</h1>
+                        <canvas id="rouletteCanvas" width="400" height="400" class="rounded-full border-4 border-gray-700 shadow-xl mx-auto"></canvas>
+                        <div class="mt-8">
+                            <div class="flex flex-col items-center">
+                                <label for="betInput" class="mb-2 text-lg">ფსონი:</label>
+                                <input type="number" id="betInput" value="10" min="1" class="w-24 p-2 text-center rounded-lg bg-gray-700 text-white font-mono">
+                                <label for="betNumberInput" class="mt-4 mb-2 text-lg">რიცხვი (0-36):</label>
+                                <input type="number" id="betNumberInput" value="1" min="0" max="36" class="w-24 p-2 text-center rounded-lg bg-gray-700 text-white font-mono">
+                            </div>
+                            <div class="flex justify-center mt-6">
+                                <button id="spinButton" class="bg-red-600 hover:bg-red-700 text-white py-3 px-8 rounded-lg text-lg font-bold shadow-lg transition-all transform hover:scale-105">დატრიალება</button>
+                            </div>
+                        </div>
+                        <div class="mt-8 text-xl">
+                            <p>ბალანსი: <span id="balance">1000</span></p>
+                            <p id="result" class="mt-2 text-green-400"></p>
+                        </div>
+                        <button onclick="window.location.href = window.location.pathname" class="mt-4 bg-gray-500 hover:bg-gray-600 text-white py-2 px-4 rounded-lg">მთავარ გვერდზე დაბრუნება</button>
+                    </div>
                 `
             }
         };
