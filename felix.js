@@ -1,332 +1,206 @@
-// Get the canvas and its context
+// Get canvas and context
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
-const gameContainer = document.getElementById('game-container');
-const jumpSound = new Audio('https://www.soundjay.com/buttons/sounds/button-1.mp3');
-const winSound = new Audio('https://www.soundjay.com/game/sounds/game-win-2.mp3');
+const scoreDisplay = document.getElementById('score');
+const livesDisplay = document.getElementById('lives');
+const gameOverScreen = document.getElementById('game-over-screen');
+const finalScoreDisplay = document.getElementById('final-score');
+const winScreen = document.getElementById('win-screen');
 
-// Set canvas dimensions
-canvas.width = 800;
-canvas.height = 400;
-
-// Game State Variables
+// Game state variables
 let score = 0;
 let lives = 3;
+let level = 1;
 let isGameOver = false;
-let currentLevel = 0;
+let isInvincible = false;
+const playerSize = 25; // Player size
+const playerSpeed = 5;
+const obstacleSpeed = 2;
 
-// Player (Felix) properties
+// Player object representing Felix
 const player = {
-    x: 50,
-    y: canvas.height - 100,
-    width: 40,
-    height: 60,
-    color: '#000000',
-    dx: 0,
-    dy: 0,
-    gravity: 0.5,
-    jumpStrength: 12,
-    isJumping: false,
-    isInvincible: false
+    x: canvas.width / 2,
+    y: canvas.height - 50,
+    width: playerSize,
+    height: playerSize,
+    speed: playerSpeed,
+    isMovingLeft: false,
+    isMovingRight: false,
 };
 
-// Levels configuration
-const levels = [
-    {
-        // Level 1
-        platforms: [
-            { x: 0, y: canvas.height - 40, width: canvas.width, height: 40 },
-            { x: 150, y: canvas.height - 120, width: 150, height: 20 },
-            { x: 400, y: canvas.height - 200, width: 100, height: 20 },
-            { x: 650, y: canvas.height - 150, width: 120, height: 20 }
-        ],
-        enemies: [
-            { x: 300, y: canvas.height - 100, width: 30, height: 30, dx: -1 },
-            { x: 550, y: canvas.height - 230, width: 30, height: 30, dx: -1 }
-        ],
-        coins: [
-            { x: 200, y: canvas.height - 150, size: 15 },
-            { x: 450, y: canvas.height - 230, size: 15 },
-            { x: 700, y: canvas.height - 180, size: 15 }
-        ]
-    },
-    {
-        // Level 2 (More enemies and platforms)
-        platforms: [
-            { x: 0, y: canvas.height - 40, width: canvas.width, height: 40 },
-            { x: 100, y: canvas.height - 100, width: 100, height: 20 },
-            { x: 300, y: canvas.height - 180, width: 150, height: 20 },
-            { x: 550, y: canvas.height - 100, width: 150, height: 20 },
-            { x: 700, y: canvas.height - 250, width: 80, height: 20 },
-        ],
-        enemies: [
-            { x: 250, y: canvas.height - 100, width: 30, height: 30, dx: -1 },
-            { x: 400, y: canvas.height - 200, width: 30, height: 30, dx: 1 },
-            { x: 600, y: canvas.height - 120, width: 30, height: 30, dx: -1 },
-        ],
-        coins: [
-            { x: 150, y: canvas.height - 150, size: 15 },
-            { x: 350, y: canvas.height - 210, size: 15 },
-            { x: 500, y: canvas.height - 140, size: 15 },
-            { x: 720, y: canvas.height - 280, size: 15 }
-        ]
-    }
-];
+// Obstacle array
+let obstacles = [];
+let spawnInterval = 1000; // How often obstacles appear (in ms)
+let lastSpawnTime = 0;
 
-let platforms = [];
-let enemies = [];
-let coins = [];
-
-// Function to load a specific level
-function loadLevel(levelIndex) {
-    if (levelIndex >= levels.length) {
-        // All levels completed
-        endGame(true); // Win condition
-        return;
-    }
-    
-    currentLevel = levelIndex;
-    platforms = [];
-    enemies = [];
-    coins = [];
-    
-    const levelData = levels[levelIndex];
-    
-    levelData.platforms.forEach(p => platforms.push({ ...p, color: '#38a169' }));
-    levelData.enemies.forEach(e => enemies.push({ ...e, color: '#d32f2f' }));
-    levelData.coins.forEach(c => coins.push({ ...c, color: '#ffd700', collected: false }));
-    
-    // Reset player position
-    player.x = 50;
-    player.y = canvas.height - 100;
-}
+// Game object to be attached to the window
 window.game = {
-    loadNextLevel: function() {
-        document.getElementById('win-screen').style.display = 'none';
-        loadLevel(currentLevel + 1);
-    }
+    loadNextLevel: loadNextLevel
 };
 
-// Function to draw objects
-function drawPlayer() {
-    ctx.fillStyle = player.color;
+// Function to draw the cat (Felix)
+function drawCat() {
+    // Draw the main body
+    ctx.fillStyle = 'black';
     ctx.fillRect(player.x, player.y, player.width, player.height);
+
+    // Draw the ears
+    ctx.beginPath();
+    ctx.moveTo(player.x, player.y);
+    ctx.lineTo(player.x + 5, player.y - 10);
+    ctx.lineTo(player.x + 10, player.y);
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.moveTo(player.x + player.width, player.y);
+    ctx.lineTo(player.x + player.width - 5, player.y - 10);
+    ctx.lineTo(player.x + player.width - 10, player.y);
+    ctx.fill();
 }
 
-function drawPlatforms() {
-    platforms.forEach(p => {
-        ctx.fillStyle = p.color;
-        ctx.fillRect(p.x, p.y, p.width, p.height);
+// Function to draw the obstacles (falling objects)
+function drawObstacles() {
+    ctx.fillStyle = 'red';
+    obstacles.forEach(obstacle => {
+        ctx.beginPath();
+        ctx.arc(obstacle.x, obstacle.y, obstacle.size, 0, Math.PI * 2);
+        ctx.fill();
     });
 }
 
-function drawEnemies() {
-    enemies.forEach(e => {
-        ctx.fillStyle = e.color;
-        ctx.fillRect(e.x, e.y, e.width, e.height);
-    });
-}
-
-function drawCoins() {
-    coins.forEach(coin => {
-        if (!coin.collected) {
-            ctx.fillStyle = coin.color;
-            ctx.beginPath();
-            ctx.arc(coin.x + coin.size / 2, coin.y + coin.size / 2, coin.size / 2, 0, Math.PI * 2);
-            ctx.fill();
-        }
-    });
-}
-
-function jump() {
-    if (!player.isJumping) {
-        player.dy = -player.jumpStrength;
-        player.isJumping = true;
-        jumpSound.play();
-    }
-}
-
-// Update function for game logic
+// Function to update the game state
 function update() {
-    if (isGameOver) {
-        return;
+    if (isGameOver) return;
+
+    // Move the player based on keyboard input
+    if (player.isMovingLeft && player.x > 0) {
+        player.x -= player.speed;
+    }
+    if (player.isMovingRight && player.x + player.width < canvas.width) {
+        player.x += player.speed;
     }
 
-    // Clear canvas
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    // Move obstacles and check for collisions
+    obstacles.forEach((obstacle, index) => {
+        obstacle.y += obstacle.speed;
 
-    // Update player
-    player.dy += player.gravity;
-    player.y += player.dy;
-    player.x += player.dx;
-
-    // Boundary checks for the player
-    if (player.x < 0) {
-        player.x = 0;
-    }
-    if (player.x + player.width > canvas.width) {
-        player.x = canvas.width - player.width;
-    }
-
-    // Check for collision with platforms
-    let onPlatform = false;
-    platforms.forEach(p => {
-        if (player.x < p.x + p.width &&
-            player.x + player.width > p.x &&
-            player.y + player.height > p.y &&
-            player.y + player.height < p.y + p.height) {
-            player.y = p.y - player.height;
-            player.dy = 0;
-            player.isJumping = false;
-            onPlatform = true;
-        }
-    });
-
-    // If not on any platform and not jumping, fall
-    if (!onPlatform) {
-        player.isJumping = true;
-    }
-    if (player.y + player.height > canvas.height) {
-        player.y = canvas.height - player.height;
-        player.dy = 0;
-        player.isJumping = false;
-    }
-
-    // Update enemies
-    enemies.forEach(e => {
-        e.x += e.dx;
-        // Bounce off walls
-        if (e.x + e.width > canvas.width || e.x < 0) {
-            e.dx *= -1;
-        }
-    });
-
-    // Collision detection for player and enemies
-    enemies.forEach(e => {
-        if (!player.isInvincible && 
-            player.x < e.x + e.width &&
-            player.x + player.width > e.x &&
-            player.y < e.y + e.height &&
-            player.y + player.height > e.y) {
-            
-            // Collision detected! Decrease lives
+        // Check for collision with the player
+        if (checkCollision(player, obstacle) && !isInvincible) {
             lives--;
-            document.getElementById('lives').textContent = lives;
+            livesDisplay.textContent = lives;
+            isInvincible = true;
             
-            // Trigger invincibility
-            player.isInvincible = true;
-            gameContainer.classList.add('player-invincible');
+            // Show player as semi-transparent when hit
+            canvas.classList.add('player-invincible');
+
             setTimeout(() => {
-                player.isInvincible = false;
-                gameContainer.classList.remove('player-invincible');
-            }, 2000);
-            
-            if (lives <= 0) {
-                endGame();
-            }
+                isInvincible = false;
+                canvas.classList.remove('player-invincible');
+            }, 2000); // 2 seconds of invincibility
+        }
+
+        // Remove obstacles that have fallen off the screen
+        if (obstacle.y > canvas.height) {
+            obstacles.splice(index, 1);
+            score++;
+            scoreDisplay.textContent = score;
         }
     });
 
-    // Collision detection for player and coins
-    let allCoinsCollected = true;
-    coins.forEach(coin => {
-        if (!coin.collected) {
-            allCoinsCollected = false;
-            if (player.x < coin.x + coin.size &&
-                player.x + player.width > coin.x &&
-                player.y < coin.y + coin.size &&
-                player.y + player.height > coin.y) {
-                
-                // Coin collected!
-                coin.collected = true;
-                score++;
-                document.getElementById('score').textContent = score;
-            }
-        }
-    });
+    // Spawn new obstacles at a regular interval
+    const currentTime = Date.now();
+    if (currentTime - lastSpawnTime > spawnInterval) {
+        obstacles.push({
+            x: Math.random() * canvas.width,
+            y: 0,
+            size: Math.random() * 10 + 5,
+            speed: obstacleSpeed * level,
+        });
+        lastSpawnTime = currentTime;
+    }
+
+    // Check for game over
+    if (lives <= 0) {
+        isGameOver = true;
+        gameOverScreen.style.display = 'flex';
+        finalScoreDisplay.textContent = score;
+    }
     
     // Check for level completion
-    if (allCoinsCollected && currentLevel < levels.length - 1) { // Check if it's the last level
-        winSound.play();
-        document.getElementById('win-screen').style.display = 'flex';
-    } else if (allCoinsCollected && currentLevel == levels.length - 1) {
-        endGame(true);
+    if (score >= 20 * level) {
+        winScreen.style.display = 'flex';
     }
+}
 
-    // Draw all elements
-    drawPlatforms();
-    drawEnemies();
-    drawCoins();
-    drawPlayer();
+// Function to load the next level
+function loadNextLevel() {
+    level++;
+    winScreen.style.display = 'none';
+    score = 0;
+    lives = 3;
+    isGameOver = false;
+    obstacles = [];
+    player.x = canvas.width / 2;
+    scoreDisplay.textContent = score;
+    livesDisplay.textContent = lives;
+    spawnInterval = Math.max(200, 1000 - level * 50); // Increase difficulty
+}
+
+// Function to check for collision between two objects
+function checkCollision(obj1, obj2) {
+    // A simplified collision check for rectangle and circle
+    const distX = Math.abs(obj2.x - obj1.x - obj1.width / 2);
+    const distY = Math.abs(obj2.y - obj1.y - obj1.height / 2);
+
+    if (distX > (obj1.width / 2 + obj2.size)) { return false; }
+    if (distY > (obj1.height / 2 + obj2.size)) { return false; }
+
+    if (distX <= (obj1.width / 2)) { return true; } 
+    if (distY <= (obj1.height / 2)) { return true; }
+
+    const dx = distX - obj1.width / 2;
+    const dy = distY - obj1.height / 2;
+    return (dx * dx + dy * dy <= (obj2.size * obj2.size));
+}
+
+// Main game loop
+function gameLoop() {
+    // Clear the canvas
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Update game state
+    update();
+
+    // Draw everything
+    drawCat();
+    drawObstacles();
 
     // Loop the game
-    requestAnimationFrame(update);
+    requestAnimationFrame(gameLoop);
 }
 
-// Game over function
-function endGame(win = false) {
-    isGameOver = true;
-    document.getElementById('game-over-screen').style.display = 'flex';
-    document.getElementById('final-score').textContent = score;
-    if (win) {
-        document.getElementById('game-over-text').textContent = 'თამაში დასრულებულია! თქვენ მოიგეთ!';
-    } else {
-        document.getElementById('game-over-text').textContent = 'თამაში დასრულდა';
-    }
-}
-
-// Event listeners for player controls
+// Event listeners for player movement
 document.addEventListener('keydown', (e) => {
-    if (isGameOver) return;
     if (e.key === 'ArrowLeft') {
-        player.dx = -5;
-    }
-    if (e.key === 'ArrowRight') {
-        player.dx = 5;
-    }
-    if (e.key === 'ArrowUp') {
-        jump();
+        player.isMovingLeft = true;
+    } else if (e.key === 'ArrowRight') {
+        player.isMovingRight = true;
     }
 });
 
 document.addEventListener('keyup', (e) => {
-    if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
-        player.dx = 0;
+    if (e.key === 'ArrowLeft') {
+        player.isMovingLeft = false;
+    } else if (e.key === 'ArrowRight') {
+        player.isMovingRight = false;
     }
 });
 
-// Handle touch events for mobile devices
-let startX = 0;
-let startY = 0;
-canvas.addEventListener('touchstart', (e) => {
-    e.preventDefault();
-    startX = e.touches[0].clientX;
-    startY = e.touches[0].clientY;
-});
-
-canvas.addEventListener('touchend', (e) => {
-    if (isGameOver) return;
-    const endX = e.changedTouches[0].clientX;
-    const endY = e.changedTouches[0].clientY;
-    const dx = endX - startX;
-    const dy = endY - startY;
-    if (Math.abs(dx) > Math.abs(dy)) {
-        if (dx > 0) {
-            player.dx = 5;
-        } else if (dx < 0) {
-            player.dx = -5;
-        }
-    } else if (dy < -20) {
-        jump();
-    }
-});
-
-canvas.addEventListener('touchmove', (e) => {
-    e.preventDefault();
-});
-
-// Start the game loop
+// Start the game loop when the window loads
 window.onload = function() {
-    loadLevel(currentLevel);
-    update();
+    // Set canvas dimensions
+    canvas.width = 400;
+    canvas.height = 600;
+
+    gameLoop();
 };
