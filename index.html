@@ -56,11 +56,11 @@
         }
 
         /* Styles for the game canvas/display */
-        #gameCanvas {
-            background-color: #5599ff;
+        #rouletteCanvas {
             border: 4px solid #4a5568;
             border-radius: 10px;
             box-shadow: 0 10px 15px rgba(0, 0, 0, 0.5);
+            background-color: #1a202c; /* Ensure consistent background */
         }
 
         #game-info {
@@ -103,6 +103,16 @@
         .player-invincible {
             opacity: 0.5;
         }
+        
+        .radio-label-container {
+            display: flex;
+            align-items: center;
+        }
+
+        .radio-label-container input[type="radio"] {
+            margin-right: 8px;
+        }
+        
     </style>
 </head>
 <body>
@@ -152,6 +162,29 @@
                             <div class="flex flex-col items-center">
                                 <label for="betInput" class="mb-2 text-lg">ფსონი:</label>
                                 <input type="number" id="betInput" value="10" min="1" class="w-24 p-2 text-center rounded-lg bg-gray-700 text-white font-mono">
+                                <div class="mt-4 mb-2 text-lg">ფსონის ტიპი:</div>
+                                <div class="flex flex-wrap justify-center gap-4">
+                                    <label class="radio-label-container">
+                                        <input type="radio" name="betType" value="number" checked class="form-radio text-green-500">
+                                        <span class="ml-2">რიცხვი</span>
+                                    </label>
+                                    <label class="radio-label-container">
+                                        <input type="radio" name="betType" value="red" class="form-radio text-red-500">
+                                        <span class="ml-2">წითელი</span>
+                                    </label>
+                                    <label class="radio-label-container">
+                                        <input type="radio" name="betType" value="black" class="form-radio text-gray-500">
+                                        <span class="ml-2">შავი</span>
+                                    </label>
+                                    <label class="radio-label-container">
+                                        <input type="radio" name="betType" value="even" class="form-radio text-blue-500">
+                                        <span class="ml-2">ლუწი</span>
+                                    </label>
+                                    <label class="radio-label-container">
+                                        <input type="radio" name="betType" value="odd" class="form-radio text-blue-500">
+                                        <span class="ml-2">კენტი</span>
+                                    </label>
+                                </div>
                                 <label for="betNumberInput" class="mt-4 mb-2 text-lg">რიცხვი (0-36):</label>
                                 <input type="number" id="betNumberInput" value="1" min="0" max="36" class="w-24 p-2 text-center rounded-lg bg-gray-700 text-white font-mono">
                             </div>
@@ -163,7 +196,10 @@
                             <p>ბალანსი: <span id="balance">1000</span></p>
                             <p id="result" class="mt-2 text-green-400"></p>
                         </div>
-                        <button onclick="window.location.href = window.location.pathname" class="mt-4 bg-gray-500 hover:bg-gray-600 text-white py-2 px-4 rounded-lg">მთავარ გვერდზე დაბრუნება</button>
+                        <div class="mt-4 flex flex-col sm:flex-row justify-center gap-4">
+                           <button onclick="window.location.href = window.location.pathname" class="bg-gray-500 hover:bg-gray-600 text-white py-2 px-4 rounded-lg">მთავარ გვერდზე დაბრუნება</button>
+                           <button id="resetButton" class="bg-yellow-500 hover:bg-yellow-600 text-white py-2 px-4 rounded-lg">ბალანსის განულება</button>
+                        </div>
                     </div>
                 `
             }
