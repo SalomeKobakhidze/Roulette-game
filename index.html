@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Roulette Game</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0d372e;
+            color: #ffffff;
+        }
+        .container {
+            max-width: 90%;
+        }
+        .roulette-wheel {
+            width: 300px;
+            height: 300px;
+            border-radius: 50%;
+            background-image: conic-gradient(
+                #d32f2f 0% 5.26%, #2e7d32 5.26% 10.52%, #d32f2f 10.52% 15.78%, #2e7d32 15.78% 21.04%,
+                #d32f2f 21.04% 26.3%, #2e7d32 26.3% 31.56%, #d32f2f 31.56% 36.82%, #2e7d32 36.82% 42.08%,
+                #d32f2f 42.08% 47.34%, #2e7d32 47.34% 52.6%, #d32f2f 52.6% 57.86%, #2e7d32 57.86% 63.12%,
+                #d32f2f 63.12% 68.38%, #2e7d32 68.38% 73.64%, #d32f2f 73.64% 78.9%, #2e7d32 78.9% 84.16%,
+                #d32f2f 84.16% 89.42%, #2e7d32 89.42% 94.68%, #000000 94.68% 100%
+            );
+            transition: transform 4s cubic-bezier(0.25, 0.1, 0.25, 1);
+        }
+        .ball {
+            width: 16px;
+            height: 16px;
+            background-color: #ffd700;
+            border-radius: 50%;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            transition: transform 4s cubic-bezier(0.25, 0.1, 0.25, 1);
+        }
+        .chip {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: black;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        .chip:hover {
+            transform: scale(1.1);
+        }
+        .chip-selected {
+            border: 3px solid #00ff00;
+            transform: scale(1.1);
+        }
+        .chip-10 { background-color: #ffb3b3; }
+        .chip-50 { background-color: #b3c2ff; }
+        .chip-100 { background-color: #b3ffb3; }
+        .chip-500 { background-color: #e0b3ff; }
+    </style>
+</head>
+<body class="bg-gray-900 text-white min-h-screen flex items-center justify-center p-4">
+
+    <div class="container mx-auto p-6 rounded-xl shadow-xl bg-gray-800 flex flex-col md:flex-row gap-8">
+        <!-- Game Area -->
+        <div class="flex-1 flex flex-col items-center justify-center gap-6">
+            <h1 class="text-3xl font-bold mb-4">Roulette Game</h1>
+
+            <!-- Message Box -->
+            <div id="message-box" class="w-full text-center text-lg font-semibold rounded-lg p-3 transition-opacity duration-300 bg-gray-700 text-gray-300">
+                Place your bets!
+            </div>
+
+            <!-- Roulette Wheel Container -->
+            <div class="relative w-[300px] h-[300px] flex items-center justify-center rounded-full">
+                <div id="roulette-wheel" class="roulette-wheel"></div>
+                <div class="absolute inset-0 flex items-center justify-center">
+                    <div class="w-20 h-20 bg-gray-900 border-4 border-gray-700 rounded-full flex items-center justify-center">
+                        <span id="winning-number" class="text-3xl font-bold">?</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bet Control Buttons -->
+            <div class="flex flex-col gap-4 w-full">
+                <div class="flex justify-center gap-4">
+                    <button id="bet-red" class="bg-red-600 text-white font-bold py-3 px-6 rounded-lg w-1/3 transition-transform hover:scale-105">RED</button>
+                    <button id="bet-black" class="bg-gray-900 text-white font-bold py-3 px-6 rounded-lg w-1/3 transition-transform hover:scale-105">BLACK</button>
+                </div>
+                <div class="flex justify-center gap-4">
+                    <button id="bet-even" class="bg-green-700 text-white font-bold py-3 px-6 rounded-lg w-1/3 transition-transform hover:scale-105">EVEN</button>
+                    <button id="bet-odd" class="bg-green-700 text-white font-bold py-3 px-6 rounded-lg w-1/3 transition-transform hover:scale-105">ODD</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Betting & Stats Area -->
+        <div class="flex-1 p-6 bg-gray-700 rounded-xl flex flex-col gap-6">
+            <h2 class="text-2xl font-bold mb-2">Betting</h2>
+            
+            <!-- Player Stats -->
+            <div class="flex justify-between items-center bg-gray-800 p-4 rounded-lg">
+                <p class="text-lg">Balance: <span id="balance" class="font-bold text-green-400">1000</span></p>
+                <p class="text-lg">Current Bet: <span id="current-bet" class="font-bold text-yellow-400">0</span></p>
+            </div>
+            
+            <!-- Chip Selection -->
+            <div class="flex justify-center gap-4 mb-4">
+                <div id="chip-10" class="chip chip-10" data-value="10">10</div>
+                <div id="chip-50" class="chip chip-50" data-value="50">50</div>
+                <div id="chip-100" class="chip chip-100" data-value="100">100</div>
+                <div id="chip-500" class="chip chip-500" data-value="500">500</div>
+            </div>
+            
+            <!-- Bet Actions -->
+            <div class="flex flex-col gap-4">
+                <button id="place-bet-btn" class="bg-blue-600 text-white font-bold py-3 px-6 rounded-lg transition-transform hover:scale-105">Place Bet</button>
+                <button id="reset-bet-btn" class="bg-red-600 text-white font-bold py-3 px-6 rounded-lg transition-transform hover:scale-105">Reset Bet</button>
+            </div>
+
+            <!-- Betting Payouts Info -->
+            <div class="mt-4 text-sm text-gray-400">
+                <h3 class="font-bold text-white mb-2">Payouts:</h3>
+                <ul class="list-disc list-inside">
+                    <li>Red/Black: 2x</li>
+                    <li>Even/Odd: 2x</li>
+                    <li>0 (Green): 35x</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Game State Variables
+        const numbers = [0, 32, 15, 19, 4, 21, 2, 25, 17, 34, 6, 27, 13, 36, 11, 30, 8, 23, 10, 5, 24, 16, 33, 1, 20, 14, 31, 9, 22, 18, 29, 7, 28, 12, 35, 3, 26];
+        let balance = 1000;
+        let currentBet = 0;
+        let selectedChipValue = 10;
+        let selectedBetType = null;
+        let isSpinning = false;
+        
+        // DOM Elements
+        const balanceEl = document.getElementById('balance');
+        const currentBetEl = document.getElementById('current-bet');
+        const chipEls = document.querySelectorAll('.chip');
+        const betRedBtn = document.getElementById('bet-red');
+        const betBlackBtn = document.getElementById('bet-black');
+        const betEvenBtn = document.getElementById('bet-even');
+        const betOddBtn = document.getElementById('bet-odd');
+        const placeBetBtn = document.getElementById('place-bet-btn');
+        const resetBetBtn = document.getElementById('reset-bet-btn');
+        const messageBox = document.getElementById('message-box');
+        const rouletteWheel = document.getElementById('roulette-wheel');
+        const winningNumberEl = document.getElementById('winning-number');
+
+        // Functions
+        const getNumberColor = (num) => {
+            if (num === 0) return 'green';
+            // Simple color logic for demonstration
+            return (num % 2 === 0) ? 'black' : 'red';
+        };
+
+        const updateUI = () => {
+            balanceEl.textContent = balance;
+            currentBetEl.textContent = currentBet;
+        };
+
+        const showMessage = (message, type = 'info') => {
+            messageBox.textContent = message;
+            messageBox.className = `w-full text-center text-lg font-semibold rounded-lg p-3 transition-opacity duration-300`;
+            if (type === 'success') {
+                messageBox.classList.add('bg-green-600', 'text-white');
+            } else if (type === 'error') {
+                messageBox.classList.add('bg-red-600', 'text-white');
+            } else {
+                messageBox.classList.add('bg-gray-700', 'text-gray-300');
+            }
+        };
+
+        const spinWheel = (winningNumber) => {
+            isSpinning = true;
+            showMessage("Spinning...");
+            
+            // Find the index of the winning number to calculate the final rotation
+            const winningIndex = numbers.indexOf(winningNumber);
+            const degreesPerNumber = 360 / numbers.length;
+            const finalRotation = 360 * 5 + degreesPerNumber * winningIndex; // Spin at least 5 full rotations
+
+            rouletteWheel.style.transform = `rotate(${finalRotation}deg)`;
+
+            setTimeout(() => {
+                isSpinning = false;
+                winningNumberEl.textContent = winningNumber;
+                rouletteWheel.style.transform = `rotate(${finalRotation % 360}deg)`; // Reset rotation for the next spin
+
+                // Check for win/loss
+                let winnings = 0;
+                if (selectedBetType === 'red' && getNumberColor(winningNumber) === 'red') {
+                    winnings = currentBet * 2;
+                } else if (selectedBetType === 'black' && getNumberColor(winningNumber) === 'black') {
+                    winnings = currentBet * 2;
+                } else if (selectedBetType === 'even' && winningNumber !== 0 && winningNumber % 2 === 0) {
+                    winnings = currentBet * 2;
+                } else if (selectedBetType === 'odd' && winningNumber % 2 !== 0) {
+                    winnings = currentBet * 2;
+                }
+
+                if (winnings > 0) {
+                    balance += winnings;
+                    showMessage(`You win! You won ${winnings}!`, 'success');
+                } else {
+                    showMessage("You lose!", 'error');
+                }
+
+                currentBet = 0;
+                selectedBetType = null;
+                updateUI();
+                
+            }, 4000); // Duration of the CSS transition
+        };
+        
+        // Event Listeners
+        chipEls.forEach(chip => {
+            chip.addEventListener('click', () => {
+                chipEls.forEach(c => c.classList.remove('chip-selected'));
+                chip.classList.add('chip-selected');
+                selectedChipValue = parseInt(chip.dataset.value);
+            });
+        });
+
+        betRedBtn.addEventListener('click', () => {
+            if (currentBet + selectedChipValue > balance) {
+                showMessage("Not enough funds!", "error");
+                return;
+            }
+            if (isSpinning) return;
+            selectedBetType = 'red';
+            currentBet += selectedChipValue;
+            updateUI();
+        });
+
+        betBlackBtn.addEventListener('click', () => {
+            if (currentBet + selectedChipValue > balance) {
+                showMessage("Not enough funds!", "error");
+                return;
+            }
+            if (isSpinning) return;
+            selectedBetType = 'black';
+            currentBet += selectedChipValue;
+            updateUI();
+        });
+
+        betEvenBtn.addEventListener('click', () => {
+             if (currentBet + selectedChipValue > balance) {
+                showMessage("Not enough funds!", "error");
+                return;
+            }
+            if (isSpinning) return;
+            selectedBetType = 'even';
+            currentBet += selectedChipValue;
+            updateUI();
+        });
+
+        betOddBtn.addEventListener('click', () => {
+             if (currentBet + selectedChipValue > balance) {
+                showMessage("Not enough funds!", "error");
+                return;
+            }
+            if (isSpinning) return;
+            selectedBetType = 'odd';
+            currentBet += selectedChipValue;
+            updateUI();
+        });
+
+        placeBetBtn.addEventListener('click', () => {
+            if (isSpinning) return;
+            if (currentBet === 0) {
+                showMessage("Please place a bet first.", "error");
+                return;
+            }
+            balance -= currentBet;
+            updateUI();
+            
+            // Get a random winning number
+            const winningNumber = numbers[Math.floor(Math.random() * numbers.length)];
+            spinWheel(winningNumber);
+        });
+
+        resetBetBtn.addEventListener('click', () => {
+            if (isSpinning) return;
+            balance += currentBet;
+            currentBet = 0;
+            selectedBetType = null;
+            updateUI();
+            showMessage("Bet has been reset.", "info");
+        });
+
+        window.onload = () => {
+            updateUI();
+            chipEls[0].classList.add('chip-selected');
+        };
+    </script>
+</body>
+</html>
